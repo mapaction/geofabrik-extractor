@@ -8,6 +8,7 @@ import ntpath
 import argparse
 import warnings
 import re
+
 logger = logging.getLogger(__name__)
 log_format = "%(asctime)s : %(levelname)s : %(name)s : %(message)s"
 logging.basicConfig(level=logging.NOTSET, format=log_format)
@@ -20,7 +21,7 @@ def get_country_dict():
     :return:
     """
     # TODO: drive off https://download.geofabrik.de/index-v1-nogeom.json
-    countries = {'afghanistan': 'afg',
+    countrydic = {'afghanistan': 'afg',
                  'angola': 'ago',
                  'albania': 'alb',
                  'united-arab-emirates': 'are',
@@ -179,6 +180,7 @@ def get_country_dict():
                  'zambia': 'zmb',
                  'zimbabwe': 'zwe',
                  'haiti-and-domrep': 'dom'}
+    return countrydic
 
 
 ###############################################################################
@@ -208,6 +210,7 @@ def get_folder_list_activedata():
                       "222_pois",
                       "229_stle",
                       "232_tran"]
+    return ma_folder_list
 
 ###############################################################################
 def create_folder_structure(output_folder):
