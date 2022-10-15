@@ -1,4 +1,6 @@
+import logging
 import os
+import sys
 import shutil
 import zipfile
 from pathlib import Path
@@ -6,169 +8,180 @@ import ntpath
 import argparse
 import warnings
 import re
-
-# Dictionary of country names and abbreviations
-countries = {'afghanistan': 'afg',
-             'angola': 'ago',
-             'albania': 'alb',
-             'united-arab-emirates': 'are',
-             'argentina': 'arg',
-             'armenia': 'arm',
-             'antigua-and-barbuda': 'atg',
-             'azerbaijan': 'aze',
-             'burundi': 'bdi',
-             'benin': 'ben',
-             'burkina-faso': 'bfa',
-             'bangladesh': 'bgd',
-             'bosnia-and-herzegovina': 'bih',
-             'belize': 'blz',
-             'bolivia': 'bol',
-             'brazil': 'bra',
-             'barbados': 'brb',
-             'bhutan': 'btn',
-             'botswana': 'bwa',
-             'central-african-republic': 'caf',
-             'chile': 'chl',
-             'china': 'chn',
-             'cote-d-ivoire': 'civ',
-             'cameroon': 'cmr',
-             'democratic-republic-of-the-congo': 'cod',
-             'congo': 'cog',
-             'cook-islands': 'cok',
-             'colombia': 'col',
-             'comoros': 'com',
-             'cabo-verde': 'cpv',
-             'costa-rica': 'cri',
-             'cuba': 'cub',
-             'cyprus': 'cyp',
-             'djibouti': 'dji',
-             'dominica': 'dma',
-             'dominican-republic': 'dom',
-             'algeria': 'dza',
-             'ecuador': 'ecu',
-             'egypt': 'egy',
-             'eritrea': 'eri',
-             'ethiopia': 'eth',
-             'fiji': 'fji',
-             'ivory': 'civ',
-             'ivory-coast': 'civ',
-             'isle-of-man': 'imn',
-             'micronesia-(federated-states-of)': 'fsm',
-             'gabon': 'gab',
-             'georgia': 'geo',
-             'ghana': 'gha',
-             'guinea': 'gin',
-             'gambia': 'gmb',
-             'guinea-bissau': 'gnb',
-             'equatorial-guinea': 'gnq',
-             'grenada': 'grd',
-             'guatemala': 'gtm',
-             'guyana': 'guy',
-             'honduras': 'hnd',
-             'croatia': 'hrv',
-             'haiti': 'dom',
-             'indonesia': 'idn',
-             'india': 'ind',
-             'iran-(islamic-republic-of)': 'irn',
-             'iran': 'irn',
-             'iraq': 'irq',
-             'israel': 'isr',
-             'jamaica': 'jam',
-             'jordan': 'jor',
-             'kazakhstan': 'kaz',
-             'kenya': 'ken',
-             'kyrgyzstan': 'kgz',
-             'cambodia': 'khm',
-             'kiribati': 'kir',
-             'saint-kitts-and-nevis': 'kna',
-             'republic-of-korea': 'kor',
-             'kuwait': 'kwt',
-             'lao-peoples-democratic-republic': 'lao',
-             'laos': 'lao',
-             'lebanon': 'lbn',
-             'liberia': 'lbr',
-             'libya': 'lby',
-             'saint-lucia': 'lca',
-             'sri-lanka': 'lka',
-             'lesotho': 'lso',
-             'morocco': 'mar',
-             'republic-of-moldova': 'mda',
-             'madagascar': 'mdg',
-             'maldives': 'mdv',
-             'mexico': 'mex',
-             'marshall-islands': 'mhl',
-             'north-macedonia': 'mkd',
-             'mali': 'mli',
-             'malta': 'mlt',
-             'myanmar': 'mmr',
-             'montenegro': 'mne',
-             'mongolia': 'mng',
-             'mozambique': 'moz',
-             'mauritania': 'mrt',
-             'mauritius': 'mus',
-             'malawi': 'mwi',
-             'malaysia': 'mys',
-             'namibia': 'nam',
-             'niger': 'ner',
-             'nigeria': 'nga',
-             'nicaragua': 'nic',
-             'niue': 'niu',
-             'nepal': 'npl',
-             'nauru': 'nru',
-             'oman': 'omn',
-             'pakistan': 'pak',
-             'panama': 'pan',
-             'peru': 'per',
-             'philippines': 'phl',
-             'palau': 'plw',
-             'papua-new-guinea': 'png',
-             'dem-people-s-rep-of-korea': 'prk',
-             'paraguay': 'pry',
-             'palestina': 'pse',
-             'qatar': 'qat',
-             'romania': 'rou',
-             'rwanda': 'rwa',
-             'saudi-arabia': 'sau',
-             'sudan': 'sdn',
-             'senegal': 'sen',
-             'solomon-islands': 'slb',
-             'sierra-leone': 'sle',
-             'el-salvador': 'slv',
-             'somalia': 'som',
-             'south-sudan': 'ssd',
-             'sao-tome-and-principe': 'stp',
-             'suriname': 'sur',
-             'eswatini': 'swz',
-             'seychelles': 'syc',
-             'syrian-arab-republic': 'syr',
-             'chad': 'tcd',
-             'togo': 'tgo',
-             'thailand': 'tha',
-             'tajikistan': 'tjk',
-             'timor-leste': 'tls',
-             'tonga': 'ton',
-             'trinidad-and-tobago': 'tto',
-             'tunisia': 'tun',
-             'turkey': 'tur',
-             'tuvalu': 'tuv',
-             'united-republic-of-tanzania': 'tza',
-             'uganda': 'uga',
-             'uruguay': 'ury',
-             'uzbekistan': 'uzb',
-             'saint-vincent-and-the-grenadines': 'vct',
-             'venezuela': 'ven',
-             'viet-nam': 'vnm',
-             'vanuatu': 'vut',
-             'samoa': 'wsm',
-             'hala-ib-triangle': 'xxx',
-             'ma-tan-al-sarra': 'xxx',
-             'yemen': 'yem',
-             'south-africa': 'zaf',
-             'zambia': 'zmb',
-             'zimbabwe': 'zwe',
-             'haiti-and-domrep': 'dom'}
+logger = logging.getLogger(__name__)
+log_format = "%(asctime)s : %(levelname)s : %(name)s : %(message)s"
+logging.basicConfig(level=logging.NOTSET, format=log_format)
 
 
+###############################################################################
+def get_country_dict():
+    """
+    Dictionary of country names and abbreviations
+    :return:
+    """
+    # TODO: drive off https://download.geofabrik.de/index-v1-nogeom.json
+    countries = {'afghanistan': 'afg',
+                 'angola': 'ago',
+                 'albania': 'alb',
+                 'united-arab-emirates': 'are',
+                 'argentina': 'arg',
+                 'armenia': 'arm',
+                 'antigua-and-barbuda': 'atg',
+                 'azerbaijan': 'aze',
+                 'burundi': 'bdi',
+                 'benin': 'ben',
+                 'burkina-faso': 'bfa',
+                 'bangladesh': 'bgd',
+                 'bosnia-and-herzegovina': 'bih',
+                 'belize': 'blz',
+                 'bolivia': 'bol',
+                 'brazil': 'bra',
+                 'barbados': 'brb',
+                 'bhutan': 'btn',
+                 'botswana': 'bwa',
+                 'central-african-republic': 'caf',
+                 'chile': 'chl',
+                 'china': 'chn',
+                 'cote-d-ivoire': 'civ',
+                 'cameroon': 'cmr',
+                 'democratic-republic-of-the-congo': 'cod',
+                 'congo': 'cog',
+                 'cook-islands': 'cok',
+                 'colombia': 'col',
+                 'comoros': 'com',
+                 'cabo-verde': 'cpv',
+                 'costa-rica': 'cri',
+                 'cuba': 'cub',
+                 'cyprus': 'cyp',
+                 'djibouti': 'dji',
+                 'dominica': 'dma',
+                 'dominican-republic': 'dom',
+                 'algeria': 'dza',
+                 'ecuador': 'ecu',
+                 'egypt': 'egy',
+                 'eritrea': 'eri',
+                 'ethiopia': 'eth',
+                 'fiji': 'fji',
+                 'ivory': 'civ',
+                 'ivory-coast': 'civ',
+                 'isle-of-man': 'imn',
+                 'micronesia-(federated-states-of)': 'fsm',
+                 'gabon': 'gab',
+                 'georgia': 'geo',
+                 'ghana': 'gha',
+                 'guinea': 'gin',
+                 'gambia': 'gmb',
+                 'guinea-bissau': 'gnb',
+                 'equatorial-guinea': 'gnq',
+                 'grenada': 'grd',
+                 'guatemala': 'gtm',
+                 'guyana': 'guy',
+                 'honduras': 'hnd',
+                 'croatia': 'hrv',
+                 'haiti': 'dom',
+                 'indonesia': 'idn',
+                 'india': 'ind',
+                 'iran-(islamic-republic-of)': 'irn',
+                 'iran': 'irn',
+                 'iraq': 'irq',
+                 'israel': 'isr',
+                 'jamaica': 'jam',
+                 'jordan': 'jor',
+                 'kazakhstan': 'kaz',
+                 'kenya': 'ken',
+                 'kyrgyzstan': 'kgz',
+                 'cambodia': 'khm',
+                 'kiribati': 'kir',
+                 'saint-kitts-and-nevis': 'kna',
+                 'republic-of-korea': 'kor',
+                 'kuwait': 'kwt',
+                 'lao-peoples-democratic-republic': 'lao',
+                 'laos': 'lao',
+                 'lebanon': 'lbn',
+                 'liberia': 'lbr',
+                 'libya': 'lby',
+                 'saint-lucia': 'lca',
+                 'sri-lanka': 'lka',
+                 'lesotho': 'lso',
+                 'morocco': 'mar',
+                 'republic-of-moldova': 'mda',
+                 'madagascar': 'mdg',
+                 'maldives': 'mdv',
+                 'mexico': 'mex',
+                 'marshall-islands': 'mhl',
+                 'north-macedonia': 'mkd',
+                 'mali': 'mli',
+                 'malta': 'mlt',
+                 'myanmar': 'mmr',
+                 'montenegro': 'mne',
+                 'mongolia': 'mng',
+                 'mozambique': 'moz',
+                 'mauritania': 'mrt',
+                 'mauritius': 'mus',
+                 'malawi': 'mwi',
+                 'malaysia': 'mys',
+                 'namibia': 'nam',
+                 'niger': 'ner',
+                 'nigeria': 'nga',
+                 'nicaragua': 'nic',
+                 'niue': 'niu',
+                 'nepal': 'npl',
+                 'nauru': 'nru',
+                 'oman': 'omn',
+                 'pakistan': 'pak',
+                 'panama': 'pan',
+                 'peru': 'per',
+                 'philippines': 'phl',
+                 'palau': 'plw',
+                 'papua-new-guinea': 'png',
+                 'dem-people-s-rep-of-korea': 'prk',
+                 'paraguay': 'pry',
+                 'palestina': 'pse',
+                 'qatar': 'qat',
+                 'romania': 'rou',
+                 'rwanda': 'rwa',
+                 'saudi-arabia': 'sau',
+                 'sudan': 'sdn',
+                 'senegal': 'sen',
+                 'solomon-islands': 'slb',
+                 'sierra-leone': 'sle',
+                 'el-salvador': 'slv',
+                 'somalia': 'som',
+                 'south-sudan': 'ssd',
+                 'sao-tome-and-principe': 'stp',
+                 'suriname': 'sur',
+                 'eswatini': 'swz',
+                 'seychelles': 'syc',
+                 'syrian-arab-republic': 'syr',
+                 'chad': 'tcd',
+                 'togo': 'tgo',
+                 'thailand': 'tha',
+                 'tajikistan': 'tjk',
+                 'timor-leste': 'tls',
+                 'tonga': 'ton',
+                 'trinidad-and-tobago': 'tto',
+                 'tunisia': 'tun',
+                 'turkey': 'tur',
+                 'tuvalu': 'tuv',
+                 'united-republic-of-tanzania': 'tza',
+                 'uganda': 'uga',
+                 'uruguay': 'ury',
+                 'uzbekistan': 'uzb',
+                 'saint-vincent-and-the-grenadines': 'vct',
+                 'venezuela': 'ven',
+                 'viet-nam': 'vnm',
+                 'vanuatu': 'vut',
+                 'samoa': 'wsm',
+                 'hala-ib-triangle': 'xxx',
+                 'ma-tan-al-sarra': 'xxx',
+                 'yemen': 'yem',
+                 'south-africa': 'zaf',
+                 'zambia': 'zmb',
+                 'zimbabwe': 'zwe',
+                 'haiti-and-domrep': 'dom'}
+
+
+###############################################################################
 def unzip(src_zip_file, dst_folder):
     """
     Unzips a zip file to the given location.
@@ -183,17 +196,29 @@ def unzip(src_zip_file, dst_folder):
         src.extractall(dst_folder)
 
 
+###############################################################################
+def get_folder_list_activedata():
+    """
+    Just a  list of folder prefixes for folder names
+    :return:
+    """
+    ma_folder_list = ["206_bldg",
+                      "218_land"
+                      "221_phys",
+                      "222_pois",
+                      "229_stle",
+                      "232_tran"]
+
+###############################################################################
 def create_folder_structure(output_folder):
     """
     Create subfolders within a given output folder, using the MapAction naming conventions.
-
     Inputs:
         - output_folder (str): Path to the desired output folder
-
     Returns:
         - None
     """
-    ma_folder_list = ["229_stle", "232_tran", "221_phys", "222_pois", "206_bldg", "218_land"]
+    ma_folder_list = get_folder_list_activedata()
 
     for ma_folder in ma_folder_list:
         dst_path = os.path.join(output_folder, ma_folder)
@@ -201,21 +226,21 @@ def create_folder_structure(output_folder):
             os.makedirs(dst_path)
 
 
+###############################################################################
 def extract_country_name(path_to_zip):
     """
     Get country name code from zip file name
 
     Inputs:
         - path_to_zip (str): Path to a zip file
-
     Returns:
-        - country_text (str): The substring from the filename relating to the country name.
+        - country_text (str): The substring from the filename relating
+          to the country name.
     """
 
     file_containing_country_name = Path(path_to_zip).stem
 
-    print(f"> Extracting information for {file_containing_country_name}")
-
+    logger.info(f"> Extracting information for {file_containing_country_name}")
     suffix_to_remove = '-latest-free.shp'
 
     if suffix_to_remove in file_containing_country_name:
@@ -226,6 +251,7 @@ def extract_country_name(path_to_zip):
         warnings.warn("The expected naming convention, 'country-name-latest-free.shp.zip', was not found. "
                       "This may result in unexpected behaviour.")
 
+    countries = get_country_dict()
     if country_text in countries.keys():
         return country_text
     else:
@@ -235,24 +261,33 @@ def extract_country_name(path_to_zip):
                          f"The country detected was {country_text}")
 
 
+###############################################################################
 def use_regex(input_text):
     """
-    Check that the input string matches the expected pattern for GeoFabrik shapefiles
-
+    Check that the input string matches the expected pattern for
+    GeoFabrik shapefiles
     Inputs:
         - input_text (str):
     Returns:
         - bool
     """
-
     pattern = re.compile(r"^([A-Za-z0-9]+(_[A-Za-z0-9]+)+)\.[a-zA-Z]+$", re.IGNORECASE)
     return pattern.match(input_text)
 
 
+###############################################################################
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Zipped folder downloaded from Geofabrik.")
-    parser.add_argument("zip", type=str, help="Zipped folder downloaded from Geofabrik.")
+    # setting logger for running off command line"
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.DEBUG)
+    logger.addHandler(console_handler)
+
+    parser = argparse.ArgumentParser(
+        description="Zipped folder downloaded from Geofabrik.")
+    parser.add_argument(
+        "zip", type=str, help="Zipped folder downloaded from Geofabrik.")
     args = parser.parse_args()
 
     zip_filepath = args.zip
@@ -268,16 +303,16 @@ if __name__ == "__main__":
             if use_regex(file):
                 extracted_file_list.append(os.path.join(root, file))
             else:
-                print(f"> Found file named '{file}', this file will not be processed.")
+                logger.info(f"> Found file named '{file}', this file will not be processed.")
 
-    print(f'> Found {len(extracted_file_list)} files correctly...processing')
+    logger.info(f'> Found {len(extracted_file_list)} files correctly...processing')
 
     country_name = extract_country_name(zip_filepath)
 
     # find code from dictionary
+    countries = get_country_dict()
     country_code = (countries[country_name])
-    print(" ")
-    print("> Processing: " + country_name + " (" + country_code.upper() + ")")
+    logger.debug("\n> Processing: " + country_name + " (" + country_code.upper() + ")")
 
     # Declare file names
     settlename = country_code + "_stle_stl_pt_s0_osm_pp_settlements"
@@ -375,4 +410,4 @@ if __name__ == "__main__":
             shutil.copy(filepath, dst)
 
     shutil.rmtree("temp_folder", ignore_errors=False, onerror=None)
-    print("> Process complete.")
+    logger.info("> Process complete.")
