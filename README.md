@@ -50,5 +50,10 @@ This would produce a folder named `/processed` under the folder specified by the
 ``
     /tmp/processed/206_bldg/sdn_bldg_bdg_py_s0_osm_pp_buildings.shp
 ``
-
 ...
+
+### For Download File by ISO Country Code
+
+Download and process file using ISO Country Code (Using 2 or 3 character code)
+
+Usage: ``python3 geofabrik-extractor.py --iso MNE``

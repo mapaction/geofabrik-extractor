@@ -3,11 +3,17 @@ import shutil
 import zipfile
 from pathlib import Path
 import urllib.request, json 
+from urllib.parse import urlparse
+from urllib.request import urlopen
 import ntpath
 import argparse
 import warnings
 import re
+import sys
 
+
+def fail(message):
+    sys.exit(message)
 
 def unzip(src_zip_file, dst_folder):
     """
@@ -67,7 +73,6 @@ def extract_country_name(path_to_zip):
                       "This may result in unexpected behaviour.")
     return country_text
 
-
 def use_regex(input_text):
     """
     Check that the input string matches the expected pattern for GeoFabrik shapefiles
@@ -81,8 +86,51 @@ def use_regex(input_text):
     pattern = re.compile(r"^([A-Za-z0-9]+(_[A-Za-z0-9]+)+)\.[a-zA-Z]+$", re.IGNORECASE)
     return pattern.match(input_text)
 
+def downloadFile(twoCharacterCountryCode):
+    """
+    Downloads a file based on it's two character ISO code
+
+    Inputs:
+        - twoCharacterCountryCode (str):
+    Returns:
+        - Path to shape file (str)
+    """
+    downloadPath = ""
+    downloadUrl = ""
+    with urllib.request.urlopen("https://download.geofabrik.de/index-v1-nogeom.json") as url:
+        data = json.load(url)
+        for feature in data['features']:
+            if (feature['properties'].get("iso3166-1:alpha2", None) is not None):
+                if type(feature['properties']['iso3166-1:alpha2']) == type([]):
+                    for alpha2Code in feature['properties']['iso3166-1:alpha2']:
+                        if (twoCharacterCountryCode.upper() == alpha2Code.upper()):
+                            downloadUrl = feature['properties']['urls']['shp']
+                else:
+                    if (twoCharacterCountryCode.upper() == (feature['properties']['iso3166-1:alpha2']).upper()):
+                        downloadUrl = feature['properties']['urls']['shp']
+
+    if (len(downloadUrl)> 0):
+        a = urlparse(downloadUrl)
+        downloadPath = os.path.join(os.path.curdir, os.path.basename(a.path))
+        print ("Downloading " + downloadUrl + " to " + downloadPath)
+        with urlopen(downloadUrl) as response:
+            body = response.read()
+
+        with open(downloadPath, mode="wb") as zipfile:
+            zipfile.write(body)
+    else:
+        fail(("Could not find file for country with code: " + twoCharacterCountryCode))
+    return downloadPath
 
 def country_codes_from_geofabrik_country_name(geofabrik_country_name):
+    """
+    Given a GeoFabrik country name, look up the country name and return ISO-3 country code collection
+
+    Inputs:
+        - GeoFabrik country name (str):
+    Returns:
+        - Collection of three character country codes
+    """
     alpha3_country_codes = []
     alpha2_country_codes = []
     with urllib.request.urlopen("https://download.geofabrik.de/index-v1-nogeom.json") as url:
@@ -96,41 +144,64 @@ def country_codes_from_geofabrik_country_name(geofabrik_country_name):
                         alpha2_country_codes.append(feature['properties']['iso3166-1:alpha2'])
 
     for alpha2Code in alpha2_country_codes:
-        alpha3_country_codes.append(alpha3code(alpha2Code))
+        alpha3_country_codes.append(isoCode(alpha2Code))
 
     return (alpha3_country_codes)
 
-def alpha3code(alpha2_country_code):
+def isoCode(alpha_country_code):
     """
-    Returns alpha-3 country code for a given alpha-3 country code
+    Returns country code for a given alpha country code
+    If a two character country code is supplied, then a three character code is returned
+    If a three character country code is supplied, then a two character code is returned
 
     Inputs:
-        - alpha-2 country code (str):
+        - alpha country code (str):
     Returns:
-        - alpha-3 code (str)
+        - alpha code (str)
     """
-    alpha3Code = None
+    alphaCode = None
     found = False
+
+    propertyKey="alpha-2"
+    valueKey="alpha-3"
+     
+    if (len(alpha_country_code) == 3):
+        propertyKey="alpha-3"
+        valueKey="alpha-2"
+
     urlPath = "https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.json"
     with urllib.request.urlopen(urlPath) as url:
         data = json.load(url)
 
         for row in data:
-            if (row['alpha-2'] == alpha2_country_code):
-                return row['alpha-3'].lower()
-
-    return (alpha3Code)
+            if (row[propertyKey] == alpha_country_code):
+                return row[valueKey].lower()
+    return (alphaCode)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Zipped folder downloaded from Geofabrik.")
     parser.add_argument("-z", "--zip", type=str, help="Zipped folder downloaded from Geofabrik.", default=None)
     parser.add_argument("-o", "--outdir", nargs='?', type=str, help="Folder in which to output the processed data.")
+    parser.add_argument("-c", "--iso", nargs='?', type=str, help="Supply the (2 or 3 character) ISO country code.")
     args = parser.parse_args()
 
+    zip_filepath = ""
     if args.zip is not None:
         zip_filepath = args.zip
-        zip_folder = os.path.dirname(zip_filepath)
+    else:
+        if args.iso is not None:
+            twoCharacterCountryCode = args.iso
+            if (len(args.iso) == 3):
+                twoCharacterCountryCode = isoCode(args.iso)
+            elif (len(args.iso) != 2):
+                fail("iso parameter must have 2 or 3 characters")
+            if (twoCharacterCountryCode is not None):
+                zip_filepath = downloadFile(twoCharacterCountryCode)
+            else:
+                fail("Could not find country for country code: '" + args.iso + "'")
+
+    zip_folder = os.path.dirname(zip_filepath)
 
     if args.outdir:
         output_root = os.path.join(args.outdir, 'processed')
