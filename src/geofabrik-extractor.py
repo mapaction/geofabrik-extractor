@@ -212,6 +212,7 @@ def get_folder_list_activedata():
                       "232_tran"]
     return ma_folder_list
 
+
 ###############################################################################
 def create_folder_structure(output_folder):
     """
@@ -243,25 +244,50 @@ def extract_country_name(path_to_zip):
 
     file_containing_country_name = Path(path_to_zip).stem
 
-    logger.info(f"> Extracting information for {file_containing_country_name}")
+    logger.info("> Extracting information for {file_containing_country_name}")
     suffix_to_remove = '-latest-free.shp'
 
-    if suffix_to_remove in file_containing_country_name:
-        country_text = file_containing_country_name.replace(suffix_to_remove, '')
-
-    else:
-        country_text = file_containing_country_name
-        warnings.warn("The expected naming convention, 'country-name-latest-free.shp.zip', was not found. "
-                      "This may result in unexpected behaviour.")
-
     countries = get_country_dict()
-    if country_text in countries.keys():
+    country_names = countries.keys()
+    look_for_country = [cn for cn in country_names
+                        if file_containing_country_name.startswith(cn)]
+
+    singlecountryfound = False
+    if len(look_for_country) == 0:
+        for cn in country_names:
+            # this bit could be made more complex, but figured this
+            # is a decent guess for a machine - LB
+            country_stub = re.findall('[a-zA-Z0-9]+', cn)[0]
+            if file_containing_country_name.startswith(country_stub):
+                look_for_country.append(cn)
+    if len(look_for_country) == 1:
+        country_text = look_for_country[0]
+        singlecountryfound = True
+    elif len(look_for_country) > 1:
+        err_text_search = "Conflict: multiple country names [%s] matched to %s: " \
+                  % (', '.join(look_for_country), file_containing_country_name)
+    else:
+        err_text_search = "Check %s for country name" % file_containing_country_name
+
+    if suffix_to_remove not in file_containing_country_name:
+        # country_text = file_containing_country_name.replace(suffix_to_remove, '')
+        # else:
+        # country_text = file_containing_country_name
+        warnings.warn("The expected naming convention, "
+                      + "'country-name-latest-free.shp.zip', was not found. "
+                      + "This may result in unexpected behaviour.")
+
+    if singlecountryfound:
         return country_text
     else:
-        raise ValueError("Unable to extract the country name from the filepath. "
-                         f"If the format is correct (e.g., 'country-name-latest-free.shp.zip'), "
-                         f"the location may not have a valid ISO code in our records. "
-                         f"The country detected was {country_text}")
+        err_text_main = "Unable to extract country name from filename %s " %\
+                        file_containing_country_name
+        iso_err_text = "If the format is correct " \
+                       + "(e.g., 'country-name-latest-free.shp.zip'), " \
+                       + "the location may not have a valid ISO code in our records. "
+        err_msg = "\n".join(err_text_main, iso_err_text, err_text_search)
+        logger.error(err_msg)
+        raise LookupError(err_msg)
 
 
 ###############################################################################
