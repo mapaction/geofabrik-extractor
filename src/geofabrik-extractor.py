@@ -252,12 +252,17 @@ def use_regex(input_text):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Zipped folder downloaded from Geofabrik.")
-    parser.add_argument("zip", type=str, help="Zipped folder downloaded from Geofabrik.")
+    parser.add_argument("zip", type=str, help="Path to a zipped folder downloaded from Geofabrik.")
+    parser.add_argument("-o", "--outdir", nargs='?', type=str, help="Folder in which to output the processed data.")
     args = parser.parse_args()
 
     zip_filepath = args.zip
     zip_folder = os.path.dirname(zip_filepath)
-    output_root = os.path.join(zip_folder, 'processed')
+
+    if args.outdir:
+        output_root = os.path.join(args.outdir, 'processed')
+    else:
+        output_root = os.path.join(zip_folder, 'processed')
 
     unzip(zip_filepath, "temp_folder")
     create_folder_structure(output_root)
