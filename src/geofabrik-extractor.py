@@ -14,7 +14,6 @@ log_format = "%(asctime)s : %(levelname)s : %(name)s : %(message)s"
 logging.basicConfig(level=logging.NOTSET, format=log_format)
 
 
-###############################################################################
 def get_country_dict():
     """
     Dictionary of country names and abbreviations
@@ -183,7 +182,6 @@ def get_country_dict():
     return countrydic
 
 
-###############################################################################
 def unzip(src_zip_file, dst_folder):
     """
     Unzips a zip file to the given location.
@@ -198,7 +196,6 @@ def unzip(src_zip_file, dst_folder):
         src.extractall(dst_folder)
 
 
-###############################################################################
 def get_folder_list_activedata():
     """
     Just a  list of folder prefixes for folder names
@@ -213,7 +210,6 @@ def get_folder_list_activedata():
     return ma_folder_list
 
 
-###############################################################################
 def create_folder_structure(output_folder):
     """
     Create subfolders within a given output folder, using the MapAction naming conventions.
@@ -230,7 +226,6 @@ def create_folder_structure(output_folder):
             os.makedirs(dst_path)
 
 
-###############################################################################
 def extract_country_name(path_to_zip):
     """
     Get country name code from zip file name
@@ -290,7 +285,6 @@ def extract_country_name(path_to_zip):
         raise LookupError(err_msg)
 
 
-###############################################################################
 def use_regex(input_text):
     """
     Check that the input string matches the expected pattern for
@@ -304,7 +298,6 @@ def use_regex(input_text):
     return pattern.match(input_text)
 
 
-###############################################################################
 if __name__ == "__main__":
 
     # setting logger for running off command line"
