@@ -90,7 +90,7 @@ def use_regex(input_text):
     return pattern.match(input_text)
 
 
-def downloadFile(twoCharacterCountryCode):
+def download_file(two_character_country_code):
     """
     Downloads a file based on it's two character ISO code
 
@@ -99,8 +99,8 @@ def downloadFile(twoCharacterCountryCode):
     Returns:
         - Path to shape file (str)
     """
-    downloadPath = ""
-    downloadUrl = ""
+    download_path = ""
+    download_url = ""
     with urllib.request.urlopen("https://download.geofabrik.de/index-v1-nogeom.json") as url:
         data = json.load(url)
         for feature in data['features']:
@@ -108,24 +108,24 @@ def downloadFile(twoCharacterCountryCode):
                 # if type(feature['properties']['iso3166-1:alpha2']) == type([]):
                 if isinstance(feature['properties']['iso3166-1:alpha2'], list):
                     for alpha2Code in feature['properties']['iso3166-1:alpha2']:
-                        if twoCharacterCountryCode.upper() == alpha2Code.upper():
-                            downloadUrl = feature['properties']['urls']['shp']
+                        if two_character_country_code.upper() == alpha2Code.upper():
+                            download_url = feature['properties']['urls']['shp']
                 else:
-                    if twoCharacterCountryCode.upper() == (feature['properties']['iso3166-1:alpha2']).upper():
-                        downloadUrl = feature['properties']['urls']['shp']
+                    if two_character_country_code.upper() == (feature['properties']['iso3166-1:alpha2']).upper():
+                        download_url = feature['properties']['urls']['shp']
 
-    if len(downloadUrl) > 0:
-        a = urlparse(downloadUrl)
-        downloadPath = os.path.join(os.path.curdir, os.path.basename(a.path))
-        print("Downloading " + downloadUrl + " to " + downloadPath)
-        with urlopen(downloadUrl) as response:
+    if len(download_url) > 0:
+        a = urlparse(download_url)
+        download_path = os.path.join(os.path.curdir, os.path.basename(a.path))
+        print("Downloading " + download_url + " to " + download_path)
+        with urlopen(download_url) as response:
             body = response.read()
 
-        with open(downloadPath, mode="wb") as zipfile:
-            zipfile.write(body)
+        with open(download_path, mode="wb") as zipped_file:
+            zipped_file.write(body)
     else:
-        fail(("Could not find file for country with code: " + twoCharacterCountryCode))
-    return downloadPath
+        fail(("Could not find file for country with code: " + two_character_country_code))
+    return download_path
 
 
 def country_codes_from_geofabrik_country_name(geofabrik_country_name):
@@ -142,8 +142,8 @@ def country_codes_from_geofabrik_country_name(geofabrik_country_name):
     with urllib.request.urlopen("https://download.geofabrik.de/index-v1-nogeom.json") as url:
         data = json.load(url)
         for feature in data['features']:
-            if (feature['properties']['id'] == geofabrik_country_name):
-                if (feature['properties'].get("iso3166-1:alpha2", None) is not None):
+            if feature['properties']['id'] == geofabrik_country_name:
+                if feature['properties'].get("iso3166-1:alpha2", None) is not None:
                     # if type(feature['properties']['iso3166-1:alpha2']) == type([]):
                     if isinstance(feature['properties']['iso3166-1:alpha2'], list):
                         alpha2_country_codes = feature['properties']['iso3166-1:alpha2']
@@ -151,12 +151,12 @@ def country_codes_from_geofabrik_country_name(geofabrik_country_name):
                         alpha2_country_codes.append(feature['properties']['iso3166-1:alpha2'])
 
     for alpha2Code in alpha2_country_codes:
-        alpha3_country_codes.append(isoCode(alpha2Code))
+        alpha3_country_codes.append(iso_code(alpha2Code))
 
     return alpha3_country_codes
 
 
-def isoCode(alpha_country_code):
+def iso_code(alpha_country_code):
     """
     Returns country code for a given alpha country code
     If a two character country code is supplied, then a three character code is returned
@@ -167,23 +167,23 @@ def isoCode(alpha_country_code):
     Returns:
         - alpha code (str)
     """
-    alphaCode = None
+    alpha_code = None
 
-    propertyKey = "alpha-2"
-    valueKey = "alpha-3"
+    property_key = "alpha-2"
+    value_key = "alpha-3"
 
     if len(alpha_country_code) == 3:
-        propertyKey = "alpha-3"
-        valueKey = "alpha-2"
+        property_key = "alpha-3"
+        value_key = "alpha-2"
 
-    urlPath = "https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.json"
-    with urllib.request.urlopen(urlPath) as url:
+    url_path = "https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.json"
+    with urllib.request.urlopen(url_path) as url:
         data = json.load(url)
 
         for row in data:
-            if row[propertyKey] == alpha_country_code:
-                return row[valueKey].lower()
-    return alphaCode
+            if row[property_key] == alpha_country_code:
+                return row[value_key].lower()
+    return alpha_code
 
 
 if __name__ == "__main__":
@@ -199,12 +199,12 @@ if __name__ == "__main__":
     else:
         if args.iso is not None:
             twoCharacterCountryCode = args.iso
-            if (len(args.iso) == 3):
-                twoCharacterCountryCode = isoCode(args.iso)
-            elif (len(args.iso) != 2):
+            if len(args.iso) == 3:
+                twoCharacterCountryCode = iso_code(args.iso)
+            elif len(args.iso) != 2:
                 fail("iso parameter must have 2 or 3 characters")
-            if (twoCharacterCountryCode is not None):
-                zip_filepath = downloadFile(twoCharacterCountryCode)
+            if twoCharacterCountryCode is not None:
+                zip_filepath = download_file(twoCharacterCountryCode)
             else:
                 fail("Could not find country for country code: '" + args.iso + "'")
 
