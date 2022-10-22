@@ -1,19 +1,21 @@
+import argparse
+import json
+import ntpath
 import os
+import re
 import shutil
+import sys
+import urllib.request
+import warnings
 import zipfile
 from pathlib import Path
-import urllib.request, json 
 from urllib.parse import urlparse
 from urllib.request import urlopen
-import ntpath
-import argparse
-import warnings
-import re
-import sys
 
 
 def fail(message):
     sys.exit(message)
+
 
 def unzip(src_zip_file, dst_folder):
     """
@@ -73,6 +75,7 @@ def extract_country_name(path_to_zip):
                       "This may result in unexpected behaviour.")
     return country_text
 
+
 def use_regex(input_text):
     """
     Check that the input string matches the expected pattern for GeoFabrik shapefiles
@@ -85,6 +88,7 @@ def use_regex(input_text):
 
     pattern = re.compile(r"^([A-Za-z0-9]+(_[A-Za-z0-9]+)+)\.[a-zA-Z]+$", re.IGNORECASE)
     return pattern.match(input_text)
+
 
 def downloadFile(twoCharacterCountryCode):
     """
@@ -100,19 +104,20 @@ def downloadFile(twoCharacterCountryCode):
     with urllib.request.urlopen("https://download.geofabrik.de/index-v1-nogeom.json") as url:
         data = json.load(url)
         for feature in data['features']:
-            if (feature['properties'].get("iso3166-1:alpha2", None) is not None):
-                if type(feature['properties']['iso3166-1:alpha2']) == type([]):
+            if feature['properties'].get("iso3166-1:alpha2", None) is not None:
+                # if type(feature['properties']['iso3166-1:alpha2']) == type([]):
+                if isinstance(feature['properties']['iso3166-1:alpha2'], list):
                     for alpha2Code in feature['properties']['iso3166-1:alpha2']:
-                        if (twoCharacterCountryCode.upper() == alpha2Code.upper()):
+                        if twoCharacterCountryCode.upper() == alpha2Code.upper():
                             downloadUrl = feature['properties']['urls']['shp']
                 else:
-                    if (twoCharacterCountryCode.upper() == (feature['properties']['iso3166-1:alpha2']).upper()):
+                    if twoCharacterCountryCode.upper() == (feature['properties']['iso3166-1:alpha2']).upper():
                         downloadUrl = feature['properties']['urls']['shp']
 
-    if (len(downloadUrl)> 0):
+    if len(downloadUrl) > 0:
         a = urlparse(downloadUrl)
         downloadPath = os.path.join(os.path.curdir, os.path.basename(a.path))
-        print ("Downloading " + downloadUrl + " to " + downloadPath)
+        print("Downloading " + downloadUrl + " to " + downloadPath)
         with urlopen(downloadUrl) as response:
             body = response.read()
 
@@ -121,6 +126,7 @@ def downloadFile(twoCharacterCountryCode):
     else:
         fail(("Could not find file for country with code: " + twoCharacterCountryCode))
     return downloadPath
+
 
 def country_codes_from_geofabrik_country_name(geofabrik_country_name):
     """
@@ -136,9 +142,10 @@ def country_codes_from_geofabrik_country_name(geofabrik_country_name):
     with urllib.request.urlopen("https://download.geofabrik.de/index-v1-nogeom.json") as url:
         data = json.load(url)
         for feature in data['features']:
-            if (feature['properties']['id'] == geofabrik_country_name): 
+            if (feature['properties']['id'] == geofabrik_country_name):
                 if (feature['properties'].get("iso3166-1:alpha2", None) is not None):
-                    if type(feature['properties']['iso3166-1:alpha2']) == type([]):
+                    # if type(feature['properties']['iso3166-1:alpha2']) == type([]):
+                    if isinstance(feature['properties']['iso3166-1:alpha2'], list):
                         alpha2_country_codes = feature['properties']['iso3166-1:alpha2']
                     else:
                         alpha2_country_codes.append(feature['properties']['iso3166-1:alpha2'])
@@ -146,7 +153,8 @@ def country_codes_from_geofabrik_country_name(geofabrik_country_name):
     for alpha2Code in alpha2_country_codes:
         alpha3_country_codes.append(isoCode(alpha2Code))
 
-    return (alpha3_country_codes)
+    return alpha3_country_codes
+
 
 def isoCode(alpha_country_code):
     """
@@ -162,21 +170,21 @@ def isoCode(alpha_country_code):
     alphaCode = None
     found = False
 
-    propertyKey="alpha-2"
-    valueKey="alpha-3"
-     
-    if (len(alpha_country_code) == 3):
-        propertyKey="alpha-3"
-        valueKey="alpha-2"
+    propertyKey = "alpha-2"
+    valueKey = "alpha-3"
+
+    if len(alpha_country_code) == 3:
+        propertyKey = "alpha-3"
+        valueKey = "alpha-2"
 
     urlPath = "https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.json"
     with urllib.request.urlopen(urlPath) as url:
         data = json.load(url)
 
         for row in data:
-            if (row[propertyKey] == alpha_country_code):
+            if row[propertyKey] == alpha_country_code:
                 return row[valueKey].lower()
-    return (alphaCode)
+    return alphaCode
 
 
 if __name__ == "__main__":
@@ -225,9 +233,10 @@ if __name__ == "__main__":
 
     country_codes = country_codes_from_geofabrik_country_name(country_name)
 
-    for country_code in (country_codes):
+    for country_code in country_codes:
         print(" ")
-        print("> Processing: " + country_name + " (" + country_code.upper() + ") to: " + (output_root.replace('\\', '/')))
+        print(
+            "> Processing: " + country_name + " (" + country_code.upper() + ") to: " + (output_root.replace('\\', '/')))
 
         # Declare file names
         settlename = country_code + "_stle_stl_pt_s0_osm_pp_settlements"
