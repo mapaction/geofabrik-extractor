@@ -193,6 +193,9 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--iso", nargs='?', type=str, help="Supply the (2 or 3 character) ISO country code.")
     args = parser.parse_args()
 
+    if not args.zip and not args.iso:
+        raise ValueError('Please specify either an ISO code or the path to zipped download from Geofabrik.')
+
     zip_filepath = ""
     if args.zip is not None:
         zip_filepath = args.zip
