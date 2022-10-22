@@ -189,19 +189,20 @@ if __name__ == "__main__":
     if not args.zip and not args.iso:
         raise ValueError('Please specify either an ISO code or the path to zipped download from Geofabrik.')
 
-    zip_filepath = ""
-    if args.zip is not None:
+    if args.zip:
         zip_filepath = args.zip
     else:
-        if args.iso is not None:
-            twoCharacterCountryCode = args.iso
-            if len(args.iso) == 3:
-                twoCharacterCountryCode = iso_code(args.iso)
-            elif len(args.iso) != 2:
-                raise AssertionError("iso parameter must have 2 or 3 characters")
-            if twoCharacterCountryCode is not None:
-                zip_filepath = download_file(twoCharacterCountryCode)
+        input_iso_code = args.iso.upper()
+        if not 2 <= len(input_iso_code) <= 3:
+            raise AssertionError("iso parameter must have 2 or 3 characters")
+        else:
+            if len(input_iso_code) == 3:
+                country_code = iso_code(input_iso_code)
             else:
+                country_code = input_iso_code
+            try:
+                zip_filepath = download_file(country_code)
+            except:
                 raise FileNotFoundError("Could not find country for country code: '" + args.iso + "'")
 
     zip_folder = os.path.dirname(zip_filepath)
