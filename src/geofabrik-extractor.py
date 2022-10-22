@@ -1,8 +1,10 @@
 import argparse
 import json
 import ntpath
+import logging
 import os
 import re
+import sys
 import shutil
 import urllib.request
 import warnings
@@ -10,6 +12,11 @@ import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import urlopen
+
+
+logger = logging.getLogger(__name__)
+log_format = "%(asctime)s : %(levelname)s : %(name)s : %(message)s"
+logging.basicConfig(level=logging.NOTSET, format=log_format)
 
 
 def unzip(src_zip_file, dst_folder):
@@ -32,7 +39,6 @@ def create_folder_structure(output_folder):
 
     Inputs:
         - output_folder (str): Path to the desired output folder
-
     Returns:
         - None
     """
@@ -50,15 +56,14 @@ def extract_country_name(path_to_zip):
 
     Inputs:
         - path_to_zip (str): Path to a zip file
-
     Returns:
-        - country_text (str): The substring from the filename relating to the country name.
+        - country_text (str): The substring from the filename relating
+          to the country name.
     """
 
     file_containing_country_name = Path(path_to_zip).stem
 
-    print(f"> Extracting information for {file_containing_country_name}")
-
+    logger.info("> Extracting information for {file_containing_country_name}")
     suffix_to_remove = '-latest-free.shp'
 
     if suffix_to_remove in file_containing_country_name:
@@ -73,14 +78,13 @@ def extract_country_name(path_to_zip):
 
 def use_regex(input_text):
     """
-    Check that the input string matches the expected pattern for GeoFabrik shapefiles
-
+    Check that the input string matches the expected pattern for
+    GeoFabrik shapefiles
     Inputs:
         - input_text (str):
     Returns:
         - bool
     """
-
     pattern = re.compile(r"^([A-Za-z0-9]+(_[A-Za-z0-9]+)+)\.[a-zA-Z]+$", re.IGNORECASE)
     return pattern.match(input_text)
 
@@ -111,7 +115,7 @@ def download_file(two_character_country_code):
     if len(download_url) > 0:
         a = urlparse(download_url)
         download_path = os.path.join(os.path.curdir, os.path.basename(a.path))
-        print("Downloading " + download_url + " to " + download_path)
+        logger.info("> Downloading " + download_url + " to " + download_path)
         with urlopen(download_url) as response:
             body = response.read()
 
@@ -180,6 +184,13 @@ def iso_code(alpha_country_code):
 
 
 if __name__ == "__main__":
+
+    # setting logger for running off command line"
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.DEBUG)
+    logger.addHandler(console_handler)
+
     parser = argparse.ArgumentParser(description="Zipped folder downloaded from Geofabrik.")
     parser.add_argument("-z", "--zip", type=str, help="Zipped folder downloaded from Geofabrik.", default=None)
     parser.add_argument("-o", "--outdir", nargs='?', type=str, help="Folder in which to output the processed data.")
@@ -221,18 +232,16 @@ if __name__ == "__main__":
             if use_regex(file):
                 extracted_file_list.append(os.path.join(root, file))
             else:
-                print(f"> Found file named '{file}', this file will not be processed.")
+                logger.info(f"> Found file named '{file}', this file will not be processed.")
 
-    print(f'> Found {len(extracted_file_list)} files correctly...processing')
+    logger.info(f'> Found {len(extracted_file_list)} files correctly...processing')
 
     country_name = extract_country_name(zip_filepath)
 
     country_codes = country_codes_from_geofabrik_country_name(country_name)
 
     for country_code in country_codes:
-        print(" ")
-        print(
-            "> Processing: " + country_name + " (" + country_code.upper() + ") to: " + (output_root.replace('\\', '/')))
+        logger.info("> Processing: " + country_name + " (" + country_code.upper() + ") to: " + (output_root.replace('\\', '/')))
 
         # Declare file names
         settlename = country_code + "_stle_stl_pt_s0_osm_pp_settlements"
@@ -330,4 +339,4 @@ if __name__ == "__main__":
                 shutil.copy(filepath, dst)
 
     shutil.rmtree("temp_folder", ignore_errors=False, onerror=None)
-    print("> Process complete.")
+    logger.info("> Process complete.")
