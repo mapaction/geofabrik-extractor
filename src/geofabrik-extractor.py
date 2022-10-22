@@ -4,17 +4,12 @@ import ntpath
 import os
 import re
 import shutil
-import sys
 import urllib.request
 import warnings
 import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import urlopen
-
-
-def fail(message):
-    sys.exit(message)
 
 
 def unzip(src_zip_file, dst_folder):
@@ -105,7 +100,6 @@ def download_file(two_character_country_code):
         data = json.load(url)
         for feature in data['features']:
             if feature['properties'].get("iso3166-1:alpha2", None) is not None:
-                # if type(feature['properties']['iso3166-1:alpha2']) == type([]):
                 if isinstance(feature['properties']['iso3166-1:alpha2'], list):
                     for alpha2Code in feature['properties']['iso3166-1:alpha2']:
                         if two_character_country_code.upper() == alpha2Code.upper():
@@ -124,7 +118,7 @@ def download_file(two_character_country_code):
         with open(download_path, mode="wb") as zipped_file:
             zipped_file.write(body)
     else:
-        fail(("Could not find file for country with code: " + two_character_country_code))
+        raise FileNotFoundError(("Could not find file for country with code: " + two_character_country_code))
     return download_path
 
 
@@ -144,7 +138,6 @@ def country_codes_from_geofabrik_country_name(geofabrik_country_name):
         for feature in data['features']:
             if feature['properties']['id'] == geofabrik_country_name:
                 if feature['properties'].get("iso3166-1:alpha2", None) is not None:
-                    # if type(feature['properties']['iso3166-1:alpha2']) == type([]):
                     if isinstance(feature['properties']['iso3166-1:alpha2'], list):
                         alpha2_country_codes = feature['properties']['iso3166-1:alpha2']
                     else:
@@ -205,11 +198,11 @@ if __name__ == "__main__":
             if len(args.iso) == 3:
                 twoCharacterCountryCode = iso_code(args.iso)
             elif len(args.iso) != 2:
-                fail("iso parameter must have 2 or 3 characters")
+                raise AssertionError("iso parameter must have 2 or 3 characters")
             if twoCharacterCountryCode is not None:
                 zip_filepath = download_file(twoCharacterCountryCode)
             else:
-                fail("Could not find country for country code: '" + args.iso + "'")
+                raise FileNotFoundError("Could not find country for country code: '" + args.iso + "'")
 
     zip_folder = os.path.dirname(zip_filepath)
 
