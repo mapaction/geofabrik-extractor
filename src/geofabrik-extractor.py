@@ -168,7 +168,6 @@ def isoCode(alpha_country_code):
         - alpha code (str)
     """
     alphaCode = None
-    found = False
 
     propertyKey = "alpha-2"
     valueKey = "alpha-3"
